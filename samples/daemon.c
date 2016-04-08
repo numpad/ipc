@@ -9,7 +9,7 @@
 
 int main(int argc, char *argv[]) {
 	
-	ipc_server srv = ipc_server_create("echo_socket");
+	ipc_server srv = ipc_create("echo_socket");
 	
 	char buf[128];
 	while (1) {
@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
 		puts("connected!");
 
 		/* handle connection and loop back to accept*/
-		while (ipc_server_read(&srv, buf, 128) > 0) {
+		while (ipc_server_read(&srv, buf, 128)) {
 			printf("-> '%.*s'\n", srv.msglen - 1, buf);
 			if (!strncmp(buf, "end", 3)) {
 				puts("closing");
@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
 
 			ipc_server_send(&srv, buf, srv.msglen);
 		}
-		
+		puts("client closed connection");
 	}
 
 	return 0;

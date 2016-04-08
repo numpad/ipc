@@ -19,7 +19,7 @@ typedef struct {
 } ipc_server;
 
 /* create unix domain socket inter process communication server */
-ipc_server ipc_server_create(const char *path) {
+ipc_server ipc_create(const char *path) {
 	ipc_server srv;
 	srv.s = socket(AF_UNIX, SOCK_STREAM, 0);
 	
@@ -45,7 +45,7 @@ void ipc_server_accept(ipc_server *srv) {
 /* read from ipc server */
 int ipc_server_read(ipc_server *srv, char *buf, int buflen) {
 	srv->msglen = recv(srv->s2, buf, buflen, 0);
-	return srv->msglen;
+	return srv->msglen > 0;
 }
 
 /* write to ipc client */
@@ -62,33 +62,46 @@ void ipc_server_close(ipc_server srv) {
  * Inter Process Communication client
  */
 
+typedef enum {
+	IPC_OK = 0,
+	IPC_UNKNOWN,
+	IPC_SOCKET_ERROR,
+	IPC_CONNECT_FAILED
+} ipc_status;
+
 typedef struct {
 	int s, t, len;
 	struct sockaddr_un remote;
-	
+
+	/* status */
+	ipc_status error;
 } ipc_client;
 
-ipc_client ipc_client_create(const char *path) {
+ipc_client ipc_connect(const char *path) {
 	ipc_client cli;
+	cli.error = IPC_UNKNOWN;
 
 	cli.s = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (cli.s == -1) {
-		puts("socket error");
+		cli.error = IPC_SOCKET_ERROR;
+		return cli;
 	}
 	
 	cli.remote.sun_family = AF_UNIX;
 	strcpy(cli.remote.sun_path, path);
 	cli.len = strlen(cli.remote.sun_path) + sizeof(cli.remote.sun_family);
 	if (connect(cli.s, (struct sockaddr *)&cli.remote, cli.len) == -1) {
-		puts("connect failed");
+		cli.error = IPC_CONNECT_FAILED;
+		return cli;
 	}
-
+	
+	cli.error = IPC_OK;
 	return cli;
 }
 
 /* sends ipc data */
-void ipc_client_send(ipc_client *cli, char *buf, int buflen) {
-	send(cli->s, buf, buflen, 0);
+int ipc_client_send(ipc_client *cli, char *buf, int buflen) {
+	return send(cli->s, buf, buflen, 0);
 }
 
 /* read ipc data */
@@ -97,7 +110,12 @@ int ipc_client_read(ipc_client *cli, char *buf, int buflen) {
 	if (cli->t > 0) {
 		buf[cli->t] = '\0';
 	}
-	return cli->t;
+	return cli->t > 0;
+}
+
+/* close ipc socket */
+void ipc_client_close(ipc_client cli) {
+	close(cli.s);
 }
 
 #endif
