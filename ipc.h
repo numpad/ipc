@@ -107,9 +107,6 @@ int ipc_client_send(ipc_client *cli, char *buf, int buflen) {
 /* read ipc data */
 int ipc_client_read(ipc_client *cli, char *buf, int buflen) {
 	cli->t = recv(cli->s, buf, buflen, 0);
-	if (cli->t > 0) {
-		buf[cli->t] = '\0';
-	}
 	return cli->t > 0;
 }
 
